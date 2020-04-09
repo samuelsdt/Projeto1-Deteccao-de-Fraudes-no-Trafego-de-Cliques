@@ -2,7 +2,7 @@
 
 Este projeto tem como objetivo apresentar uma solução para a competição da Kaggle: TalkingData AdTracking Fraud Detection Challenge, disponível em https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection.
 
-Solução em linguagem R, os scripts são os seguintes:
+Solução em linguagem R, os datasets estão disponíveis em https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/data, os scripts são os seguintes:
 
 01-geracao_base_trabalho: script de transformações na base de dados original e geração de uma amostra da base total para trabalho.
 
