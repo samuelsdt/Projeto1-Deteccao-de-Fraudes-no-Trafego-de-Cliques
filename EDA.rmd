@@ -1,0 +1,231 @@
+---
+title: "EDA"
+author: "Samuel Schmidt"
+output: pdf_document
+---
+
+## Análise Exploratória de dados
+
+Esse relatório busca apresentar os padrões encontrados nos dados durante o processo de análise exploratória.
+
+
+```{r pacotes, include=FALSE}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+options(warn=-1)
+```
+
+## Gráficos:
+
+```{r plots1, echo=FALSE}
+df  <- fread("data_work.csv", header = T, dec=",")
+df$catAcesApp = factor(df$catAcesApp)
+  df %>%
+    select(Acessos, is_attributed) %>%
+    group_by(Acessos) %>%
+    summarise(perc = mean(is_attributed)*100)%>%
+    ggplot(aes(x=Acessos,y=perc)) + geom_line()
+```
+
+Temos um range de acessos muito grande, porém fica claro que a linha se aproxima de zero conforme a qtde de acessos aumenta, vamos limitar o eixo x a 1000 acessos para melhor análise.
+
+```{r plots2, echo=FALSE}
+df %>%
+    select(Acessos, is_attributed) %>%
+    group_by(Acessos) %>%
+    summarise(perc = mean(is_attributed)*100)%>%
+    ggplot(aes(x=Acessos,y=perc)) + geom_line() + scale_x_continuous(limits=c(1, 1000), breaks = seq(0,1000,by=100))
+```
+Ainda não legível, mas a tendência se confirma, limitaremos a 100 acessos.
+
+```{r plots3, echo=FALSE}
+df %>%
+    select(Acessos, is_attributed) %>%
+    group_by(Acessos) %>%
+    summarise(perc = mean(is_attributed)*100)%>%
+    ggplot(aes(x=Acessos,y=perc)) + geom_line() + scale_x_continuous(limits=c(1, 100), breaks = seq(0,100,by=10))
+```
+
+Podemos observar uma queda consideravel no percentual de downloads quando o número de acessos por IP é maior que 10.
+
+### Comparando os acessos por intervalo
+
+Teoricamente bots tendem a ter um alto número de acessos em um pequeno intervalo de tempo.
+
+```{r plots4, echo=FALSE}
+ggplot(df[!is.na(df$intervalo),c("Acessos","intervalo")],aes(x=Acessos, y=intervalo)) + geom_point() + scale_x_continuous(limits=c(1, 1000), breaks = seq(0,1000,by=100))
+```
+
+Ajustando os eixos para uma melhor visualização:
+
+```{r plots5, echo=FALSE}
+ggplot(df[!is.na(df$intervalo),c("Acessos","intervalo")],aes(x=Acessos, y=intervalo)) + geom_point() + scale_x_continuous(limits=c(1, 500), breaks = seq(0,500,by=100)) + scale_y_continuous(limits=c(0, 50000))
+```
+
+O gráfico mostra maior dispersão no intervalo onde a qtde de acessos é baixa, e maior concentração onde a qtde de acessos é alta.
+
+Visualizando a média de downloads por intervalo, app, device, os, channel e hora, linha vermelha igual a média geral.
+
+```{r plots6, echo=FALSE}
+for (i in c("intervalo", "app", "device", "os", "channel", "hour"))
+{
+  p <- df %>%
+    select(one_of(i),is_attributed) %>%
+    group_by_at(vars(one_of(i))) %>%
+    summarise(media = mean(is_attributed)*100) %>%
+    ggplot(aes_string(x=i,y="media")) + geom_line() + geom_hline(yintercept=0.2505, color="red") 
+   print(p)
+}
+```
+
+Podemos observar alguns apps, devices, os, channels com diferenças bastantes significativas da média. Com relação as horas do dia, as diferenças são sutis, já os intervalos devemos olhar com mais detalhe.
+
+Para uma análise mais detalhada, os dados de intervalo foram divididos em 5 categorias, portanto, iremos analisar os percentuais de downloads por categoria, a linha vermelha no gráfico significa a média geral de downloads.
+
+```{r plots7, echo=FALSE}
+df %>%
+  select(catIntervalo,is_attributed) %>%
+  group_by(catIntervalo) %>%
+  summarise(media = mean(is_attributed)*100) %>%
+  ggplot(aes(x=catIntervalo,y=media)) + geom_line() + geom_hline(yintercept=0.2505, color="red") 
+```
+
+Podemos ver claramente que o percentual de dowloads por acesso aumenta conforme o intervalo entre cliques aumenta.
+
+Vamos analisar as categorias de intervalo por quatidade absoluta de downloads:
+
+```{r plots8, echo=FALSE}
+df %>%
+  select(catIntervalo,is_attributed) %>%
+  group_by(catIntervalo) %>%
+  summarise(total = sum(is_attributed)) %>%
+  ggplot(aes(x=catIntervalo,y=total)) + geom_line()
+```
+
+O comportamento do gráfico anterior se repete, a quantidade de dowloads aumenta conforme o intervalo entre cliques aumenta.
+
+A quantidade de acessos por IP também será categorizada em 5 categorias. Além disso, será criado um atributo contendo a frequência relativa de acessos por IP, pois frequência absoluta aumentará ao longo do tempo, podendo alterar os patamares dependo da periodo analisado.
+
+Analisando o percentual de downloads por categoria, linha vermelha igual a média geral:
+
+```{r plots9, echo=FALSE}
+df %>%
+  select(catAcessos,is_attributed) %>%
+  group_by(catAcessos) %>%
+  summarise(media = mean(is_attributed)*100) %>%
+  ggplot(aes(x=catAcessos,y=media)) + geom_line() + geom_hline(yintercept=0.2505, color="red") 
+```
+
+Conforme o frequência de acessos por IP aumenta o percentual diminui, podemos ver uma queda considerável no percentual a partir da categoria 2.
+
+Analisando as categorias por quantidade absoluta:
+
+```{r plots10, echo=FALSE}
+df %>%
+  select(catAcessos,is_attributed) %>%
+  group_by(catAcessos) %>%
+  summarise(total = sum(is_attributed)) %>%
+  ggplot(aes(x=catAcessos,y=total)) + geom_line()
+
+```
+
+O comportamento do gráfico anterior se repete, a quantidade de dowloads diminui conforme a frequência de acessos por IP aumenta.
+
+A quantidade de acessos por App também será categorizada em 5 categorias para uma melhor análise dos dados. 
+
+Quantidade de downloads por categoria:
+
+```{r plots11, echo=FALSE}
+df %>%
+  select(catAcesApp,is_attributed) %>%
+  group_by(catAcesApp) %>%
+  summarise(total = sum(is_attributed)) %>%
+  ggplot(aes(x=as.integer(catAcesApp),y=total)) + geom_line() + xlab("catAcesApp")
+```
+
+Perencetual de downloads por categoria, linha vermelha refere-se a média geral:
+
+```{r plots12, echo=FALSE}
+df %>%
+  select(catAcesApp,is_attributed) %>%
+  group_by(catAcesApp) %>%
+  summarise(perc=mean(is_attributed)*100) %>%
+  ggplot(aes(x=as.integer(catAcesApp),y=perc)) + geom_line() + geom_hline(yintercept=0.2505, color="red") + xlab("catAcesApp")
+
+```
+
+Categoria de acessos por App 1 (até 3,67% dos acessos) possui maior efetividade nos downloads.
+
+Com relação ao device, mais de 94% dos acessos se deram pelo mesmo tipo de device (device 1), portanto, os dados de acesso por device foram categorizados em 2 categorias: device 1 e demais devices.
+
+Verificando as  medias de downloads por categoria de device:
+
+```{r plots13, echo=FALSE}
+sprintf("%% downloads na categoria 1: %.2f%%",round(mean(df[df$catAcesDevice==1,]$is_attributed)*100,2))
+sprintf("Total downloads na categoria 1: %d",sum(df[df$catAcesDevice==1,]$is_attributed))
+```
+
+Na categoria 1 média de 0.18% dos acessos se convertem em downloads, totalizando 3.351 downloads na base de trabalho.
+
+```{r plots14, echo=FALSE}
+sprintf("%% downloads na categoria 2: %.2f%%",round(mean(df[df$catAcesDevice==2,]$is_attributed)*100,2))
+sprintf("Total downloads na categoria 2: %d",sum(df[df$catAcesDevice==2,]$is_attributed))
+```
+
+Na categoria 2 média de 1.45% dos acessos se convertem em downloads, totalizando 1.659 downloads na base de trabalho.
+
+Analisando a base de dados de trabalho, apenas 5.71% dos acessos estão na categoria de device 2, porém 33% dos downloads estão nessa categoria.
+
+A frequência de acessos por sistema operacional também foi dividido em 5 categorias, portanto serão analisados os gráficos de converssão de cliques em download por categoria, linha vermelha refere-se a média geral:
+
+```{r plots15, echo=FALSE}
+df %>%
+  select(catAcesOS,is_attributed) %>%
+  group_by(catAcesOS) %>%
+  summarise(perc=mean(is_attributed)*100) %>%
+  ggplot(aes(x=catAcesOS,y=perc)) + geom_line() + geom_hline(yintercept=0.2505, color="red")
+
+```
+
+Conversão de downloads da categoria 1 estão bem acima da média, categorias de 2 a 5 estabilizadas, sendo que a partir da categora 3 existe uma leve subida.
+
+Analisando as categorias por quantidade absoluta:
+
+```{r plots16, echo=FALSE}
+df %>%
+  select(catAcesOS,is_attributed) %>%
+  group_by(catAcesOS) %>%
+  summarise(total = sum(is_attributed)) %>%
+  ggplot(aes(x=catAcesOS,y=total)) + geom_line()
+```
+
+O desenho do gráfico anterior se repete, porém a subida está mais acentuada depois da categoria 3.
+
+E por último, categorizando os acessos por channel também em 5 categorias para que sejam feitas as devidas análises. 
+
+Analisando o percentual de downloads por categoria com linha vermelha representando a média geral:
+
+```{r plots17, echo=FALSE}
+df %>%
+  select(catAcesChannel,is_attributed) %>%
+  group_by(catAcesChannel) %>%
+  summarise(media = mean(is_attributed)*100) %>%
+  ggplot(aes(x=catAcesChannel,y=media)) + geom_line() + geom_hline(yintercept=0.2505, color="red")
+```
+
+Conversão de downloads da categoria 1 está bem acima da média, categoria 2 está acima das demais, categorias de 3 a 5 estáveis.
+
+Analisando as categorias de acesso por channel em quantidade absoluta:
+
+```{r plots18, echo=FALSE}
+df %>%
+  select(catAcesChannel,is_attributed) %>%
+  group_by(catAcesChannel) %>%
+  summarise(total = sum(is_attributed)) %>%
+  ggplot(aes(x=catAcesChannel,y=total)) + geom_line()
+```
+
+No gráfico de quantidade absoluta podemos observar o mesmo desenho criado no gráfico de percentual.
+
+Podemos concluir que existem certas relevâncias para um clique se converter em download analisando sobre o ponto de vista do IP que acessou, do intervalo desde o último clique, do app que está sendo acessado, do channel que está sendo usado, do device e também do sistema operacional. Porém quais atributos são mais relevantes para que um clique realmente se converta em download, vamos buscar respoder a partir da geração de modelos preditivos.
